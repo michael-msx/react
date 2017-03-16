@@ -11,62 +11,59 @@
 
 'use strict';
 
-var React = require('React');
+var React = require('react');
 var ReactTransitionChildMapping = require('ReactTransitionChildMapping');
 
-var emptyFunction = require('emptyFunction');
+var emptyFunction = require('fbjs/lib/emptyFunction');
 
 /**
- * A basis for animatins. When children are declaratively added or removed,
+ * A basis for animations. When children are declaratively added or removed,
  * special lifecycle hooks are called.
  * See https://facebook.github.io/react/docs/animation.html#low-level-api-reacttransitiongroup
  */
-var ReactTransitionGroup = React.createClass({
-  displayName: 'ReactTransitionGroup',
+class ReactTransitionGroup extends React.Component {
+  static displayName = 'ReactTransitionGroup';
 
-  propTypes: {
+  static propTypes = {
     component: React.PropTypes.any,
     childFactory: React.PropTypes.func,
-  },
+  };
 
-  getDefaultProps: function() {
-    return {
-      component: 'span',
-      childFactory: emptyFunction.thatReturnsArgument,
-    };
-  },
+  static defaultProps = {
+    component: 'span',
+    childFactory: emptyFunction.thatReturnsArgument,
+  };
 
-  getInitialState: function() {
-    return {
-      children: ReactTransitionChildMapping.getChildMapping(this.props.children),
-    };
-  },
+  state = {
+    // TODO: can we get useful debug information to show at this point?
+    children: ReactTransitionChildMapping.getChildMapping(this.props.children),
+  };
 
-  componentWillMount: function() {
+  componentWillMount() {
     this.currentlyTransitioningKeys = {};
     this.keysToEnter = [];
     this.keysToLeave = [];
-  },
+  }
 
-  componentDidMount: function() {
+  componentDidMount() {
     var initialChildMapping = this.state.children;
     for (var key in initialChildMapping) {
       if (initialChildMapping[key]) {
         this.performAppear(key);
       }
     }
-  },
+  }
 
-  componentWillReceiveProps: function(nextProps) {
+  componentWillReceiveProps(nextProps) {
     var nextChildMapping = ReactTransitionChildMapping.getChildMapping(
-      nextProps.children
+      nextProps.children,
     );
     var prevChildMapping = this.state.children;
 
     this.setState({
       children: ReactTransitionChildMapping.mergeChildMappings(
         prevChildMapping,
-        nextChildMapping
+        nextChildMapping,
       ),
     });
 
@@ -74,24 +71,30 @@ var ReactTransitionGroup = React.createClass({
 
     for (key in nextChildMapping) {
       var hasPrev = prevChildMapping && prevChildMapping.hasOwnProperty(key);
-      if (nextChildMapping[key] && !hasPrev &&
-          !this.currentlyTransitioningKeys[key]) {
+      if (
+        nextChildMapping[key] &&
+        !hasPrev &&
+        !this.currentlyTransitioningKeys[key]
+      ) {
         this.keysToEnter.push(key);
       }
     }
 
     for (key in prevChildMapping) {
       var hasNext = nextChildMapping && nextChildMapping.hasOwnProperty(key);
-      if (prevChildMapping[key] && !hasNext &&
-          !this.currentlyTransitioningKeys[key]) {
+      if (
+        prevChildMapping[key] &&
+        !hasNext &&
+        !this.currentlyTransitioningKeys[key]
+      ) {
         this.keysToLeave.push(key);
       }
     }
 
     // If we want to someday check for reordering, we could do it here.
-  },
+  }
 
-  componentDidUpdate: function() {
+  componentDidUpdate() {
     var keysToEnter = this.keysToEnter;
     this.keysToEnter = [];
     keysToEnter.forEach(this.performEnter);
@@ -99,23 +102,21 @@ var ReactTransitionGroup = React.createClass({
     var keysToLeave = this.keysToLeave;
     this.keysToLeave = [];
     keysToLeave.forEach(this.performLeave);
-  },
+  }
 
-  performAppear: function(key) {
+  performAppear = key => {
     this.currentlyTransitioningKeys[key] = true;
 
     var component = this.refs[key];
 
     if (component.componentWillAppear) {
-      component.componentWillAppear(
-        this._handleDoneAppearing.bind(this, key)
-      );
+      component.componentWillAppear(this._handleDoneAppearing.bind(this, key));
     } else {
       this._handleDoneAppearing(key);
     }
-  },
+  };
 
-  _handleDoneAppearing: function(key) {
+  _handleDoneAppearing = key => {
     var component = this.refs[key];
     if (component.componentDidAppear) {
       component.componentDidAppear();
@@ -124,30 +125,28 @@ var ReactTransitionGroup = React.createClass({
     delete this.currentlyTransitioningKeys[key];
 
     var currentChildMapping = ReactTransitionChildMapping.getChildMapping(
-      this.props.children
+      this.props.children,
     );
 
     if (!currentChildMapping || !currentChildMapping.hasOwnProperty(key)) {
       // This was removed before it had fully appeared. Remove it.
       this.performLeave(key);
     }
-  },
+  };
 
-  performEnter: function(key) {
+  performEnter = key => {
     this.currentlyTransitioningKeys[key] = true;
 
     var component = this.refs[key];
 
     if (component.componentWillEnter) {
-      component.componentWillEnter(
-        this._handleDoneEntering.bind(this, key)
-      );
+      component.componentWillEnter(this._handleDoneEntering.bind(this, key));
     } else {
       this._handleDoneEntering(key);
     }
-  },
+  };
 
-  _handleDoneEntering: function(key) {
+  _handleDoneEntering = key => {
     var component = this.refs[key];
     if (component.componentDidEnter) {
       component.componentDidEnter();
@@ -156,16 +155,16 @@ var ReactTransitionGroup = React.createClass({
     delete this.currentlyTransitioningKeys[key];
 
     var currentChildMapping = ReactTransitionChildMapping.getChildMapping(
-      this.props.children
+      this.props.children,
     );
 
     if (!currentChildMapping || !currentChildMapping.hasOwnProperty(key)) {
       // This was removed before it had fully entered. Remove it.
       this.performLeave(key);
     }
-  },
+  };
 
-  performLeave: function(key) {
+  performLeave = key => {
     this.currentlyTransitioningKeys[key] = true;
 
     var component = this.refs[key];
@@ -177,9 +176,9 @@ var ReactTransitionGroup = React.createClass({
       // is done.
       this._handleDoneLeaving(key);
     }
-  },
+  };
 
-  _handleDoneLeaving: function(key) {
+  _handleDoneLeaving = key => {
     var component = this.refs[key];
 
     if (component.componentDidLeave) {
@@ -189,7 +188,7 @@ var ReactTransitionGroup = React.createClass({
     delete this.currentlyTransitioningKeys[key];
 
     var currentChildMapping = ReactTransitionChildMapping.getChildMapping(
-      this.props.children
+      this.props.children,
     );
 
     if (currentChildMapping && currentChildMapping.hasOwnProperty(key)) {
@@ -202,9 +201,9 @@ var ReactTransitionGroup = React.createClass({
         return {children: newChildren};
       });
     }
-  },
+  };
 
-  render: function() {
+  render() {
     // TODO: we could get rid of the need for the wrapper node
     // by cloning a single child
     var childrenToRender = [];
@@ -216,18 +215,29 @@ var ReactTransitionGroup = React.createClass({
         // already been removed. In case you need this behavior you can provide
         // a childFactory function to wrap every child, even the ones that are
         // leaving.
-        childrenToRender.push(React.cloneElement(
-          this.props.childFactory(child),
-          {ref: key, key: key}
-        ));
+        childrenToRender.push(
+          React.cloneElement(this.props.childFactory(child), {
+            ref: key,
+            key: key,
+          }),
+        );
       }
     }
-    return React.createElement(
-      this.props.component,
-      this.props,
-      childrenToRender
-    );
-  },
-});
+
+    // Do not forward ReactTransitionGroup props to primitive DOM nodes
+    var props = Object.assign({}, this.props);
+    delete props.transitionLeave;
+    delete props.transitionName;
+    delete props.transitionAppear;
+    delete props.transitionEnter;
+    delete props.childFactory;
+    delete props.transitionLeaveTimeout;
+    delete props.transitionEnterTimeout;
+    delete props.transitionAppearTimeout;
+    delete props.component;
+
+    return React.createElement(this.props.component, props, childrenToRender);
+  }
+}
 
 module.exports = ReactTransitionGroup;

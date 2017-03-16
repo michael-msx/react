@@ -11,7 +11,7 @@
  */
 'use strict';
 
-var ReactElement = require('ReactElement');
+var React = require('react');
 var ReactInstrumentation = require('ReactInstrumentation');
 var ReactNativeContainerInfo = require('ReactNativeContainerInfo');
 var ReactNativeTagHandles = require('ReactNativeTagHandles');
@@ -20,7 +20,7 @@ var ReactUpdateQueue = require('ReactUpdateQueue');
 var ReactUpdates = require('ReactUpdates');
 var UIManager = require('UIManager');
 
-var emptyObject = require('emptyObject');
+var emptyObject = require('fbjs/lib/emptyObject');
 var instantiateReactComponent = require('instantiateReactComponent');
 var shouldUpdateReactComponent = require('shouldUpdateReactComponent');
 
@@ -35,9 +35,9 @@ if (__DEV__) {
   TopLevelWrapper.displayName = 'TopLevelWrapper';
 }
 TopLevelWrapper.prototype.render = function() {
-  // this.props is actually a ReactElement
-  return this.props;
+  return this.props.child;
 };
+TopLevelWrapper.isReactTopLevelWrapper = true;
 
 /**
  * Mounts this component and inserts it into the DOM.
@@ -47,16 +47,14 @@ TopLevelWrapper.prototype.render = function() {
  * @param {number} containerTag container element to mount into.
  * @param {ReactReconcileTransaction} transaction
  */
-function mountComponentIntoNode(
-    componentInstance,
-    containerTag,
-    transaction) {
+function mountComponentIntoNode(componentInstance, containerTag, transaction) {
   var markup = ReactReconciler.mountComponent(
     componentInstance,
     transaction,
     null,
     ReactNativeContainerInfo(containerTag),
-    emptyObject
+    emptyObject,
+    0 /* parentDebugID */,
   );
   componentInstance._renderedComponent._topLevelWrapper = componentInstance;
   ReactNativeMount._mountImageIntoNode(markup, containerTag);
@@ -69,16 +67,14 @@ function mountComponentIntoNode(
  * @param {number} rootID ID of the root node.
  * @param {number} containerTag container element to mount into.
  */
-function batchedMountComponentIntoNode(
-    componentInstance,
-    containerTag) {
+function batchedMountComponentIntoNode(componentInstance, containerTag) {
   var transaction = ReactUpdates.ReactReconcileTransaction.getPooled();
   transaction.perform(
     mountComponentIntoNode,
     null,
     componentInstance,
     containerTag,
-    transaction
+    transaction,
   );
   ReactUpdates.ReactReconcileTransaction.release(transaction);
 }
@@ -98,27 +94,25 @@ var ReactNativeMount = {
    * @param {containerTag} containerView Handle to native view tag
    */
   renderComponent: function(
-    nextElement: ReactElement,
+    nextElement: ReactElement<*>,
     containerTag: number,
-    callback?: ?(() => void)
-  ): ?ReactComponent {
-    var nextWrappedElement = new ReactElement(
-      TopLevelWrapper,
-      null,
-      null,
-      null,
-      null,
-      null,
-      nextElement
-    );
+    callback?: ?() => void,
+  ): ?ReactComponent<any, any, any> {
+    var nextWrappedElement = React.createElement(TopLevelWrapper, {
+      child: nextElement,
+    });
 
     var topRootNodeID = containerTag;
     var prevComponent = ReactNativeMount._instancesByContainerID[topRootNodeID];
     if (prevComponent) {
       var prevWrappedElement = prevComponent._currentElement;
-      var prevElement = prevWrappedElement.props;
+      var prevElement = prevWrappedElement.props.child;
       if (shouldUpdateReactComponent(prevElement, nextElement)) {
-        ReactUpdateQueue.enqueueElementInternal(prevComponent, nextWrappedElement);
+        ReactUpdateQueue.enqueueElementInternal(
+          prevComponent,
+          nextWrappedElement,
+          emptyObject,
+        );
         if (callback) {
           ReactUpdateQueue.enqueueCallbackInternal(prevComponent, callback);
         }
@@ -135,17 +129,16 @@ var ReactNativeMount = {
 
     ReactNativeTagHandles.assertRootTag(containerTag);
 
-    var instance = instantiateReactComponent(nextWrappedElement);
+    var instance = instantiateReactComponent(nextWrappedElement, false);
     ReactNativeMount._instancesByContainerID[containerTag] = instance;
 
-    if (__DEV__) {
-      // Mute future events from the top level wrapper.
-      // It is an implementation detail that devtools should not know about.
-      instance._debugID = 0;
-
-      if (__DEV__) {
-        ReactInstrumentation.debugTool.onBeginFlush();
-      }
+    if (callback) {
+      var nonNullCallback = callback;
+      instance._pendingCallbacks = [
+        function() {
+          nonNullCallback.call(instance._renderedComponent.getPublicInstance());
+        },
+      ];
     }
 
     // The initial render is synchronous but any updates that happen during
@@ -155,19 +148,9 @@ var ReactNativeMount = {
     ReactUpdates.batchedUpdates(
       batchedMountComponentIntoNode,
       instance,
-      containerTag
+      containerTag,
     );
-    if (__DEV__) {
-      // The instance here is TopLevelWrapper so we report mount for its child.
-      ReactInstrumentation.debugTool.onMountRootComponent(
-        instance._renderedComponent._debugID
-      );
-      ReactInstrumentation.debugTool.onEndFlush();
-    }
-    var component = instance.getPublicInstance();
-    if (callback) {
-      callback.call(component);
-    }
+    var component = instance._renderedComponent.getPublicInstance();
     return component;
   },
 
@@ -175,14 +158,11 @@ var ReactNativeMount = {
    * @param {View} view View tree image.
    * @param {number} containerViewID View to insert sub-view into.
    */
-  _mountImageIntoNode: function(mountImage : number, containerID : number) {
+  _mountImageIntoNode: function(mountImage: number, containerID: number) {
     // Since we now know that the `mountImage` has been mounted, we can
     // mark it as such.
     var childTag = mountImage;
-    UIManager.setChildren(
-      containerID,
-      [childTag]
-    );
+    UIManager.setChildren(containerID, [childTag]);
   },
 
   /**
@@ -193,9 +173,7 @@ var ReactNativeMount = {
    * asynchronously, it's easier to just have this method be the one that calls
    * for removal of the view.
    */
-  unmountComponentAtNodeAndRemoveContainer: function(
-    containerTag: number
-  ) {
+  unmountComponentAtNodeAndRemoveContainer: function(containerTag: number) {
     ReactNativeMount.unmountComponentAtNode(containerTag);
     // call back into native to remove all of the subviews from this container
     UIManager.removeRootView(containerTag);
@@ -237,14 +215,13 @@ var ReactNativeMount = {
    * @see {ReactNativeMount.unmountComponentAtNode}
    */
   unmountComponentFromNode: function(
-    instance: ReactComponent,
-    containerID: number
+    instance: ReactComponent<any, any, any>,
+    containerID: number,
   ) {
     // Call back into native to remove all of the subviews from this container
     ReactReconciler.unmountComponent(instance);
     UIManager.removeSubviewsFromContainerWithID(containerID);
   },
-
 };
 
 module.exports = ReactNativeMount;

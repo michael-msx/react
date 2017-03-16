@@ -11,7 +11,7 @@
 
 'use strict';
 
-var React = require('React');
+var React = require('react');
 
 var ReactTransitionGroup = require('ReactTransitionGroup');
 var ReactCSSTransitionGroupChild = require('ReactCSSTransitionGroupChild');
@@ -26,16 +26,19 @@ function createTransitionTimeoutPropValidator(transitionType) {
       // If no timeout duration is provided
       if (props[timeoutPropName] == null) {
         return new Error(
-          timeoutPropName + ' wasn\'t supplied to ReactCSSTransitionGroup: ' +
-          'this can cause unreliable animations and won\'t be supported in ' +
-          'a future version of React. See ' +
-          'https://fb.me/react-animation-transition-group-timeout for more ' +
-          'information.'
+          timeoutPropName +
+            " wasn't supplied to ReactCSSTransitionGroup: " +
+            "this can cause unreliable animations and won't be supported in " +
+            'a future version of React. See ' +
+            'https://fb.me/react-animation-transition-group-timeout for more ' +
+            'information.',
         );
 
-      // If the duration isn't a number
+        // If the duration isn't a number
       } else if (typeof props[timeoutPropName] !== 'number') {
-        return new Error(timeoutPropName + ' must be a number (in milliseconds)');
+        return new Error(
+          timeoutPropName + ' must be a number (in milliseconds)',
+        );
       }
     }
   };
@@ -46,10 +49,10 @@ function createTransitionTimeoutPropValidator(transitionType) {
  * enters or leaves the DOM.
  * See https://facebook.github.io/react/docs/animation.html#high-level-api-reactcsstransitiongroup
  */
-var ReactCSSTransitionGroup = React.createClass({
-  displayName: 'ReactCSSTransitionGroup',
+class ReactCSSTransitionGroup extends React.Component {
+  static displayName = 'ReactCSSTransitionGroup';
 
-  propTypes: {
+  static propTypes = {
     transitionName: ReactCSSTransitionGroupChild.propTypes.name,
 
     transitionAppear: React.PropTypes.bool,
@@ -58,17 +61,15 @@ var ReactCSSTransitionGroup = React.createClass({
     transitionAppearTimeout: createTransitionTimeoutPropValidator('Appear'),
     transitionEnterTimeout: createTransitionTimeoutPropValidator('Enter'),
     transitionLeaveTimeout: createTransitionTimeoutPropValidator('Leave'),
-  },
+  };
 
-  getDefaultProps: function() {
-    return {
-      transitionAppear: false,
-      transitionEnter: true,
-      transitionLeave: true,
-    };
-  },
+  static defaultProps = {
+    transitionAppear: false,
+    transitionEnter: true,
+    transitionLeave: true,
+  };
 
-  _wrapChild: function(child) {
+  _wrapChild = child => {
     // We need to provide this childFactory so that
     // ReactCSSTransitionGroupChild can receive updates to name, enter, and
     // leave while it is leaving.
@@ -83,16 +84,16 @@ var ReactCSSTransitionGroup = React.createClass({
         enterTimeout: this.props.transitionEnterTimeout,
         leaveTimeout: this.props.transitionLeaveTimeout,
       },
-      child
+      child,
     );
-  },
+  };
 
-  render: function() {
+  render() {
     return React.createElement(
       ReactTransitionGroup,
-      Object.assign({}, this.props, {childFactory: this._wrapChild})
+      Object.assign({}, this.props, {childFactory: this._wrapChild}),
     );
-  },
-});
+  }
+}
 
 module.exports = ReactCSSTransitionGroup;

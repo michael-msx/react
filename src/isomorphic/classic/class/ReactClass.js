@@ -11,47 +11,44 @@
 
 'use strict';
 
-var ReactComponent = require('ReactComponent');
+var ReactBaseClasses = require('ReactBaseClasses');
 var ReactElement = require('ReactElement');
-var ReactPropTypeLocations = require('ReactPropTypeLocations');
-var ReactPropTypeLocationNames = require('ReactPropTypeLocationNames');
 var ReactNoopUpdateQueue = require('ReactNoopUpdateQueue');
 
-var emptyObject = require('emptyObject');
-var invariant = require('invariant');
-var keyMirror = require('keyMirror');
-var keyOf = require('keyOf');
-var warning = require('warning');
+var emptyObject = require('fbjs/lib/emptyObject');
+var invariant = require('fbjs/lib/invariant');
+var warning = require('fbjs/lib/warning');
 
-var MIXINS_KEY = keyOf({mixins: null});
+var ReactComponent = ReactBaseClasses.Component;
+
+var MIXINS_KEY = 'mixins';
+
+// Helper function to allow the creation of anonymous functions which do not
+// have .name set to the name of the variable being assigned to.
+function identity(fn) {
+  return fn;
+}
 
 /**
  * Policies that describe methods in `ReactClassInterface`.
  */
-var SpecPolicy = keyMirror({
+type SpecPolicy =
   /**
    * These methods may be defined only once by the class specification or mixin.
    */
-  DEFINE_ONCE: null,
-  /**
+  | 'DEFINE_ONCE' /**
    * These methods may be defined by both the class specification and mixins.
    * Subsequent definitions will be chained. These methods must return void.
    */
-  DEFINE_MANY: null,
-  /**
+  | 'DEFINE_MANY' /**
    * These methods are overriding the base class.
    */
-  OVERRIDE_BASE: null,
-  /**
+  | 'OVERRIDE_BASE' /**
    * These methods are similar to DEFINE_MANY, except we assume they return
    * objects. We try to merge the keys of the return values of all the mixed in
    * functions. If there is a key conflict we throw.
    */
-  DEFINE_MANY_MERGED: null,
-});
-
-
-var injectedMixins = [];
+  | 'DEFINE_MANY_MERGED';
 
 /**
  * Composite components are higher-level components that compose other composite
@@ -75,15 +72,14 @@ var injectedMixins = [];
  * @interface ReactClassInterface
  * @internal
  */
-var ReactClassInterface = {
-
+var ReactClassInterface: {[key: string]: SpecPolicy} = {
   /**
    * An array of Mixin objects to include when defining your component.
    *
    * @type {array}
    * @optional
    */
-  mixins: SpecPolicy.DEFINE_MANY,
+  mixins: 'DEFINE_MANY',
 
   /**
    * An object containing properties and methods that should be defined on
@@ -92,7 +88,7 @@ var ReactClassInterface = {
    * @type {object}
    * @optional
    */
-  statics: SpecPolicy.DEFINE_MANY,
+  statics: 'DEFINE_MANY',
 
   /**
    * Definition of prop types for this component.
@@ -100,7 +96,7 @@ var ReactClassInterface = {
    * @type {object}
    * @optional
    */
-  propTypes: SpecPolicy.DEFINE_MANY,
+  propTypes: 'DEFINE_MANY',
 
   /**
    * Definition of context types for this component.
@@ -108,7 +104,7 @@ var ReactClassInterface = {
    * @type {object}
    * @optional
    */
-  contextTypes: SpecPolicy.DEFINE_MANY,
+  contextTypes: 'DEFINE_MANY',
 
   /**
    * Definition of context types this component sets for its children.
@@ -116,7 +112,7 @@ var ReactClassInterface = {
    * @type {object}
    * @optional
    */
-  childContextTypes: SpecPolicy.DEFINE_MANY,
+  childContextTypes: 'DEFINE_MANY',
 
   // ==== Definition methods ====
 
@@ -130,7 +126,7 @@ var ReactClassInterface = {
    * @return {object}
    * @optional
    */
-  getDefaultProps: SpecPolicy.DEFINE_MANY_MERGED,
+  getDefaultProps: 'DEFINE_MANY_MERGED',
 
   /**
    * Invoked once before the component is mounted. The return value will be used
@@ -146,13 +142,13 @@ var ReactClassInterface = {
    * @return {object}
    * @optional
    */
-  getInitialState: SpecPolicy.DEFINE_MANY_MERGED,
+  getInitialState: 'DEFINE_MANY_MERGED',
 
   /**
    * @return {object}
    * @optional
    */
-  getChildContext: SpecPolicy.DEFINE_MANY_MERGED,
+  getChildContext: 'DEFINE_MANY_MERGED',
 
   /**
    * Uses props from `this.props` and state from `this.state` to render the
@@ -167,12 +163,9 @@ var ReactClassInterface = {
    *   }
    *
    * @return {ReactComponent}
-   * @nosideeffects
    * @required
    */
-  render: SpecPolicy.DEFINE_ONCE,
-
-
+  render: 'DEFINE_ONCE',
 
   // ==== Delegate methods ====
 
@@ -183,7 +176,7 @@ var ReactClassInterface = {
    *
    * @optional
    */
-  componentWillMount: SpecPolicy.DEFINE_MANY,
+  componentWillMount: 'DEFINE_MANY',
 
   /**
    * Invoked when the component has been mounted and has a DOM representation.
@@ -195,7 +188,7 @@ var ReactClassInterface = {
    * @param {DOMElement} rootNode DOM element representing the component.
    * @optional
    */
-  componentDidMount: SpecPolicy.DEFINE_MANY,
+  componentDidMount: 'DEFINE_MANY',
 
   /**
    * Invoked before the component receives new props.
@@ -216,7 +209,7 @@ var ReactClassInterface = {
    * @param {object} nextProps
    * @optional
    */
-  componentWillReceiveProps: SpecPolicy.DEFINE_MANY,
+  componentWillReceiveProps: 'DEFINE_MANY',
 
   /**
    * Invoked while deciding if the component should be updated as a result of
@@ -238,7 +231,7 @@ var ReactClassInterface = {
    * @return {boolean} True if the component should update.
    * @optional
    */
-  shouldComponentUpdate: SpecPolicy.DEFINE_ONCE,
+  shouldComponentUpdate: 'DEFINE_ONCE',
 
   /**
    * Invoked when the component is about to update due to a transition from
@@ -255,7 +248,7 @@ var ReactClassInterface = {
    * @param {ReactReconcileTransaction} transaction
    * @optional
    */
-  componentWillUpdate: SpecPolicy.DEFINE_MANY,
+  componentWillUpdate: 'DEFINE_MANY',
 
   /**
    * Invoked when the component's DOM representation has been updated.
@@ -269,7 +262,7 @@ var ReactClassInterface = {
    * @param {DOMElement} rootNode DOM element representing the component.
    * @optional
    */
-  componentDidUpdate: SpecPolicy.DEFINE_MANY,
+  componentDidUpdate: 'DEFINE_MANY',
 
   /**
    * Invoked when the component is about to be removed from its parent and have
@@ -282,9 +275,7 @@ var ReactClassInterface = {
    *
    * @optional
    */
-  componentWillUnmount: SpecPolicy.DEFINE_MANY,
-
-
+  componentWillUnmount: 'DEFINE_MANY',
 
   // ==== Advanced methods ====
 
@@ -298,8 +289,7 @@ var ReactClassInterface = {
    * @internal
    * @overridable
    */
-  updateComponent: SpecPolicy.OVERRIDE_BASE,
-
+  updateComponent: 'OVERRIDE_BASE',
 };
 
 /**
@@ -324,30 +314,22 @@ var RESERVED_SPEC_KEYS = {
   },
   childContextTypes: function(Constructor, childContextTypes) {
     if (__DEV__) {
-      validateTypeDef(
-        Constructor,
-        childContextTypes,
-        ReactPropTypeLocations.childContext
-      );
+      validateTypeDef(Constructor, childContextTypes, 'child context');
     }
     Constructor.childContextTypes = Object.assign(
       {},
       Constructor.childContextTypes,
-      childContextTypes
+      childContextTypes,
     );
   },
   contextTypes: function(Constructor, contextTypes) {
     if (__DEV__) {
-      validateTypeDef(
-        Constructor,
-        contextTypes,
-        ReactPropTypeLocations.context
-      );
+      validateTypeDef(Constructor, contextTypes, 'context');
     }
     Constructor.contextTypes = Object.assign(
       {},
       Constructor.contextTypes,
-      contextTypes
+      contextTypes,
     );
   },
   /**
@@ -358,7 +340,7 @@ var RESERVED_SPEC_KEYS = {
     if (Constructor.getDefaultProps) {
       Constructor.getDefaultProps = createMergedResultFunction(
         Constructor.getDefaultProps,
-        getDefaultProps
+        getDefaultProps,
       );
     } else {
       Constructor.getDefaultProps = getDefaultProps;
@@ -366,17 +348,9 @@ var RESERVED_SPEC_KEYS = {
   },
   propTypes: function(Constructor, propTypes) {
     if (__DEV__) {
-      validateTypeDef(
-        Constructor,
-        propTypes,
-        ReactPropTypeLocations.prop
-      );
+      validateTypeDef(Constructor, propTypes, 'prop');
     }
-    Constructor.propTypes = Object.assign(
-      {},
-      Constructor.propTypes,
-      propTypes
-    );
+    Constructor.propTypes = Object.assign({}, Constructor.propTypes, propTypes);
   },
   statics: function(Constructor, statics) {
     mixStaticSpecIntoComponent(Constructor, statics);
@@ -384,7 +358,7 @@ var RESERVED_SPEC_KEYS = {
   autobind: function() {}, // noop
 };
 
-function validateTypeDef(Constructor, typeDef, location) {
+function validateTypeDef(Constructor, typeDef, location: string) {
   for (var propName in typeDef) {
     if (typeDef.hasOwnProperty(propName)) {
       // use a warning instead of an invariant so components
@@ -392,40 +366,39 @@ function validateTypeDef(Constructor, typeDef, location) {
       warning(
         typeof typeDef[propName] === 'function',
         '%s: %s type `%s` is invalid; it must be a function, usually from ' +
-        'React.PropTypes.',
+          'React.PropTypes.',
         Constructor.displayName || 'ReactClass',
-        ReactPropTypeLocationNames[location],
-        propName
+        location,
+        propName,
       );
     }
   }
 }
 
 function validateMethodOverride(isAlreadyDefined, name) {
-  var specPolicy = ReactClassInterface.hasOwnProperty(name) ?
-    ReactClassInterface[name] :
-    null;
+  var specPolicy = ReactClassInterface.hasOwnProperty(name)
+    ? ReactClassInterface[name]
+    : null;
 
   // Disallow overriding of base class methods unless explicitly allowed.
   if (ReactClassMixin.hasOwnProperty(name)) {
     invariant(
-      specPolicy === SpecPolicy.OVERRIDE_BASE,
+      specPolicy === 'OVERRIDE_BASE',
       'ReactClassInterface: You are attempting to override ' +
-      '`%s` from your class specification. Ensure that your method names ' +
-      'do not overlap with React methods.',
-      name
+        '`%s` from your class specification. Ensure that your method names ' +
+        'do not overlap with React methods.',
+      name,
     );
   }
 
   // Disallow defining methods more than once unless explicitly allowed.
   if (isAlreadyDefined) {
     invariant(
-      specPolicy === SpecPolicy.DEFINE_MANY ||
-      specPolicy === SpecPolicy.DEFINE_MANY_MERGED,
+      specPolicy === 'DEFINE_MANY' || specPolicy === 'DEFINE_MANY_MERGED',
       'ReactClassInterface: You are attempting to define ' +
-      '`%s` on your component more than once. This conflict may be due ' +
-      'to a mixin.',
-      name
+        '`%s` on your component more than once. This conflict may be due ' +
+        'to a mixin.',
+      name,
     );
   }
 }
@@ -436,19 +409,34 @@ function validateMethodOverride(isAlreadyDefined, name) {
  */
 function mixSpecIntoComponent(Constructor, spec) {
   if (!spec) {
+    if (__DEV__) {
+      var typeofSpec = typeof spec;
+      var isMixinValid = typeofSpec === 'object' && spec !== null;
+
+      warning(
+        isMixinValid,
+        "%s: You're attempting to include a mixin that is either null " +
+          'or not an object. Check the mixins included by the component, ' +
+          'as well as any mixins they include themselves. ' +
+          'Expected object but got %s.',
+        Constructor.displayName || 'ReactClass',
+        spec === null ? null : typeofSpec,
+      );
+    }
+
     return;
   }
 
   invariant(
     typeof spec !== 'function',
-    'ReactClass: You\'re attempting to ' +
-    'use a component class or function as a mixin. Instead, just use a ' +
-    'regular object.'
+    "ReactClass: You're attempting to " +
+      'use a component class or function as a mixin. Instead, just use a ' +
+      'regular object.',
   );
   invariant(
     !ReactElement.isValidElement(spec),
-    'ReactClass: You\'re attempting to ' +
-    'use a component as a mixin. Instead, just use a regular object.'
+    "ReactClass: You're attempting to " +
+      'use a component as a mixin. Instead, just use a regular object.',
   );
 
   var proto = Constructor.prototype;
@@ -482,11 +470,9 @@ function mixSpecIntoComponent(Constructor, spec) {
       // The following member methods should not be automatically bound:
       // 1. Expected ReactClass methods (in the "interface").
       // 2. Overridden methods (that were mixed in).
-      var isReactClassMethod =
-        ReactClassInterface.hasOwnProperty(name);
+      var isReactClassMethod = ReactClassInterface.hasOwnProperty(name);
       var isFunction = typeof property === 'function';
-      var shouldAutoBind =
-        isFunction &&
+      var shouldAutoBind = isFunction &&
         !isReactClassMethod &&
         !isAlreadyDefined &&
         spec.autobind !== false;
@@ -500,21 +486,20 @@ function mixSpecIntoComponent(Constructor, spec) {
 
           // These cases should already be caught by validateMethodOverride.
           invariant(
-            isReactClassMethod && (
-              specPolicy === SpecPolicy.DEFINE_MANY_MERGED ||
-              specPolicy === SpecPolicy.DEFINE_MANY
-            ),
+            isReactClassMethod &&
+              (specPolicy === 'DEFINE_MANY_MERGED' ||
+                specPolicy === 'DEFINE_MANY'),
             'ReactClass: Unexpected spec policy %s for key %s ' +
-            'when mixing in component specs.',
+              'when mixing in component specs.',
             specPolicy,
-            name
+            name,
           );
 
           // For methods which are defined more than once, call the existing
           // methods before calling the new property, merging if appropriate.
-          if (specPolicy === SpecPolicy.DEFINE_MANY_MERGED) {
+          if (specPolicy === 'DEFINE_MANY_MERGED') {
             proto[name] = createMergedResultFunction(proto[name], property);
-          } else if (specPolicy === SpecPolicy.DEFINE_MANY) {
+          } else if (specPolicy === 'DEFINE_MANY') {
             proto[name] = createChainedFunction(proto[name], property);
           }
         } else {
@@ -546,19 +531,19 @@ function mixStaticSpecIntoComponent(Constructor, statics) {
     invariant(
       !isReserved,
       'ReactClass: You are attempting to define a reserved ' +
-      'property, `%s`, that shouldn\'t be on the "statics" key. Define it ' +
-      'as an instance property instead; it will still be accessible on the ' +
-      'constructor.',
-      name
+        'property, `%s`, that shouldn\'t be on the "statics" key. Define it ' +
+        'as an instance property instead; it will still be accessible on the ' +
+        'constructor.',
+      name,
     );
 
     var isInherited = name in Constructor;
     invariant(
       !isInherited,
       'ReactClass: You are attempting to define ' +
-      '`%s` on your component more than once. This conflict may be ' +
-      'due to a mixin.',
-      name
+        '`%s` on your component more than once. This conflict may be ' +
+        'due to a mixin.',
+      name,
     );
     Constructor[name] = property;
   }
@@ -574,7 +559,7 @@ function mixStaticSpecIntoComponent(Constructor, statics) {
 function mergeIntoWithNoDuplicateKeys(one, two) {
   invariant(
     one && two && typeof one === 'object' && typeof two === 'object',
-    'mergeIntoWithNoDuplicateKeys(): Cannot merge non-objects.'
+    'mergeIntoWithNoDuplicateKeys(): Cannot merge non-objects.',
   );
 
   for (var key in two) {
@@ -582,11 +567,11 @@ function mergeIntoWithNoDuplicateKeys(one, two) {
       invariant(
         one[key] === undefined,
         'mergeIntoWithNoDuplicateKeys(): ' +
-        'Tried to merge two objects with the same key: `%s`. This conflict ' +
-        'may be due to a mixin; in particular, this may be caused by two ' +
-        'getInitialState() or getDefaultProps() methods returning objects ' +
-        'with clashing keys.',
-        key
+          'Tried to merge two objects with the same key: `%s`. This conflict ' +
+          'may be due to a mixin; in particular, this may be caused by two ' +
+          'getInitialState() or getDefaultProps() methods returning objects ' +
+          'with clashing keys.',
+        key,
       );
       one[key] = two[key];
     }
@@ -656,16 +641,16 @@ function bindAutoBindMethod(component, method) {
         warning(
           false,
           'bind(): React component methods may only be bound to the ' +
-          'component instance. See %s',
-          componentName
+            'component instance.\n\nSee %s',
+          componentName,
         );
       } else if (!args.length) {
         warning(
           false,
           'bind(): You are binding a component method to the component. ' +
-          'React does this for you automatically in a high-performance ' +
-          'way, so you can safely remove this call. See %s',
-          componentName
+            'React does this for you automatically in a high-performance ' +
+            'way, so you can safely remove this call.\n\nSee %s',
+          componentName,
         );
         return boundMethod;
       }
@@ -689,10 +674,7 @@ function bindAutoBindMethods(component) {
   for (var i = 0; i < pairs.length; i += 2) {
     var autoBindKey = pairs[i];
     var method = pairs[i + 1];
-    component[autoBindKey] = bindAutoBindMethod(
-      component,
-      method
-    );
+    component[autoBindKey] = bindAutoBindMethod(component, method);
   }
 }
 
@@ -701,16 +683,12 @@ function bindAutoBindMethods(component) {
  * therefore not already part of the modern ReactComponent.
  */
 var ReactClassMixin = {
-
   /**
    * TODO: This will be deprecated because state should always keep a consistent
    * type signature and the only use case for this, is to avoid that.
    */
   replaceState: function(newState, callback) {
-    this.updater.enqueueReplaceState(this, newState);
-    if (callback) {
-      this.updater.enqueueCallback(this, callback, 'replaceState');
-    }
+    this.updater.enqueueReplaceState(this, newState, callback, 'replaceState');
   },
 
   /**
@@ -728,7 +706,7 @@ var ReactClassComponent = function() {};
 Object.assign(
   ReactClassComponent.prototype,
   ReactComponent.prototype,
-  ReactClassMixin
+  ReactClassMixin,
 );
 
 /**
@@ -737,17 +715,19 @@ Object.assign(
  * @class ReactClass
  */
 var ReactClass = {
-
   /**
    * Creates a composite component class given a class specification.
-   * See https://facebook.github.io/react/docs/top-level-api.html#react.createclass
+   * See https://facebook.github.io/react/docs/react-api.html#createclass
    *
    * @param {object} spec Class specification (which must define `render`).
    * @return {function} Component constructor function.
    * @public
    */
   createClass: function(spec) {
-    var Constructor = function(props, context, updater) {
+    // To keep our warnings more understandable, we'll use a little hack here to
+    // ensure that Constructor.name !== 'Constructor'. This makes sure we don't
+    // unnecessarily identify a class without displayName as 'Constructor'.
+    var Constructor = identity(function(props, context, updater) {
       // This constructor gets overridden by mocks. The argument is used
       // by mocks to assert on what gets mounted.
 
@@ -755,7 +735,7 @@ var ReactClass = {
         warning(
           this instanceof Constructor,
           'Something is calling a React component directly. Use a factory or ' +
-          'JSX instead. See: https://fb.me/react-legacyfactory'
+            'JSX instead. See: https://fb.me/react-legacyfactory',
         );
       }
 
@@ -777,8 +757,9 @@ var ReactClass = {
       var initialState = this.getInitialState ? this.getInitialState() : null;
       if (__DEV__) {
         // We allow auto-mocks to proceed as if they're returning null.
-        if (initialState === undefined &&
-            this.getInitialState._isMockFunction) {
+        if (
+          initialState === undefined && this.getInitialState._isMockFunction
+        ) {
           // This is probably bad practice. Consider warning here and
           // deprecating this convenience.
           initialState = null;
@@ -787,18 +768,14 @@ var ReactClass = {
       invariant(
         typeof initialState === 'object' && !Array.isArray(initialState),
         '%s.getInitialState(): must return an object or null',
-        Constructor.displayName || 'ReactCompositeComponent'
+        Constructor.displayName || 'ReactCompositeComponent',
       );
 
       this.state = initialState;
-    };
+    });
     Constructor.prototype = new ReactClassComponent();
     Constructor.prototype.constructor = Constructor;
     Constructor.prototype.__reactAutoBindPairs = [];
-
-    injectedMixins.forEach(
-      mixSpecIntoComponent.bind(null, Constructor)
-    );
 
     mixSpecIntoComponent(Constructor, spec);
 
@@ -822,23 +799,23 @@ var ReactClass = {
 
     invariant(
       Constructor.prototype.render,
-      'createClass(...): Class specification must implement a `render` method.'
+      'createClass(...): Class specification must implement a `render` method.',
     );
 
     if (__DEV__) {
       warning(
         !Constructor.prototype.componentShouldUpdate,
         '%s has a method called ' +
-        'componentShouldUpdate(). Did you mean shouldComponentUpdate()? ' +
-        'The name is phrased as a question because the function is ' +
-        'expected to return a value.',
-        spec.displayName || 'A component'
+          'componentShouldUpdate(). Did you mean shouldComponentUpdate()? ' +
+          'The name is phrased as a question because the function is ' +
+          'expected to return a value.',
+        spec.displayName || 'A component',
       );
       warning(
         !Constructor.prototype.componentWillRecieveProps,
         '%s has a method called ' +
-        'componentWillRecieveProps(). Did you mean componentWillReceiveProps()?',
-        spec.displayName || 'A component'
+          'componentWillRecieveProps(). Did you mean componentWillReceiveProps()?',
+        spec.displayName || 'A component',
       );
     }
 
@@ -851,13 +828,6 @@ var ReactClass = {
 
     return Constructor;
   },
-
-  injection: {
-    injectMixin: function(mixin) {
-      injectedMixins.push(mixin);
-    },
-  },
-
 };
 
 module.exports = ReactClass;

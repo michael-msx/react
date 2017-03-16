@@ -2,24 +2,47 @@
 name: React
 description: A JavaScript library for building user interfaces
 url: https://facebook.github.io
-baseurl: "/react"
-permalink: "/blog/:year/:month/:day/:title.html"
-paginate_path: "/blog/page:num/"
-relative_permalinks: true
+baseurl: /react
+permalink: /blog/:year/:month/:day/:title.html
+paginate_path: /blog/page:num/
 paginate: 5
 timezone: America/Los_Angeles
 highlighter: pygments
 defaults:
 - scope:
     path: ''
-    type: post
+    type: posts
   values:
     layout: post
+    sectionid: blog
+- scope:
+    path: blog
+    type: pages
+  values:
+    sectionid: blog
+- scope:
+    path: tutorial
+    type: pages
+  values:
+    layout: tutorial
+    sectionid: tutorial
 - scope:
     path: docs
-    type: page
+    type: pages
   values:
     layout: docs
+    sectionid: docs
+- scope:
+    path: contributing
+    type: pages
+  values:
+    sectionid: docs
+- scope:
+    path: community
+    type: pages
+  values:
+    layout: community
+    sectionid: community
 exclude:
 - Gemfile
 - Gemfile.lock
@@ -36,13 +59,14 @@ sass:
   sass_dir: _css
 gems:
 - jekyll-redirect-from
-react_version: 15.0.2
+- jekyll-paginate
+react_version: 15.4.0
 react_hashes:
-  dev: dedPNF++oHBwT++5v2VMeXSzyNkqJd7tbc3ic+wN3l0u/NEBcMNuf9a7knYgwTco
-  prod: 1kql9Cm3anPpO0n0a4T7keJt+N4pixvMU33Bk69kZi1WkN6gbq1EVZdfZLjqwmFq
-  addons_dev: b7jdy0/iqeUofUONQyRN/Y3DO/h61sL56BgMXJzfokC2mtsi2pJGhQekw6QqI/71
-  addons_prod: 1J/3e0bGfmFbeuWDRmyBoBOImeFnDn03OKWsXiWVOThql8Yf1qXaim7NrAqL4RHi
-  dom_dev: kQ+9o036IWQT7tKVxA8siLqHR0DekC3YXbkA7RsFQHbuqQutOmb3cOsTQ1WFtMhW
-  dom_prod: q14dOJErroITWJ+DFXug03tOxuZ4fm7u5BkcbboXFWJNvDGPepPWXUuIphvvAsAl
-  dom_server_dev: WiRnBunlOqqLKTWNe+788pJ0QLFIXXktwBnqNV2OggmTROfZJvn1WfrZyh0xhnja
-  dom_server_prod: wkSOmc5KBqBSFy+CAVk0ehSoBEMqzpKj4lzcoKLBchNzTIwCAZ3Pe+LX73kyNNhz
+  dev: buVLzxzBI8Ps3svVMSUurNdb5dozNidH5Ow4H0YgZeia3t6Oeui2VLpvtAq1fwtK
+  prod: nCjsa0kjNQPQdxWm12/ReVJzfBJaVubEwwDswyQDGMKYJmeWv3qShMuETfU5fisu
+  addons_dev: /u97pKzBwasbC1yj8gSIq1z30o4ZTUX9j1Mv/hyAjmG41ydTNHw9JFOhwFbDgxmR
+  addons_prod: /p86n4b5VTlWoA/INEHQZ+zjx9g1pJduoFmTEJ6fSzFTq1mBaXaBcWVGtZJXD68L
+  dom_dev: lUxkeWjg3I3lXmxcM1gvgo0yvm2w9alc1osa4L8yWZFO6l/vg9h5hSlHPFioltrm
+  dom_prod: u8x1yIGN9IjGNYbBaDMsp1D4MK3sCmMU13mcBX+bm+aMo5+gaT8HIwIj39GlXaRS
+  dom_server_dev: Okj1hVX1VF+oZSkPcJQ/YcnW6bsIpeni222ylwUaMnSmdCe0zWKmMwpFMVqzy4Ws
+  dom_server_prod: wiA4u+G5fEfF4xzhhVnNWeSifVyttoEIpgc3APaMKQgw5A4wHbEMihf63tk1qoyt

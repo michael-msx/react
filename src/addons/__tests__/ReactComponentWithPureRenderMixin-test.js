@@ -15,16 +15,14 @@ var React;
 var ReactComponentWithPureRenderMixin;
 var ReactTestUtils;
 
-describe('ReactComponentWithPureRenderMixin', function() {
-
-  beforeEach(function() {
-    React = require('React');
-    ReactComponentWithPureRenderMixin =
-      require('ReactComponentWithPureRenderMixin');
+describe('ReactComponentWithPureRenderMixin', () => {
+  beforeEach(() => {
+    React = require('react');
+    ReactComponentWithPureRenderMixin = require('ReactComponentWithPureRenderMixin');
     ReactTestUtils = require('ReactTestUtils');
   });
 
-  it('provides a default shouldComponentUpdate implementation', function() {
+  it('provides a default shouldComponentUpdate implementation', () => {
     var renderCalls = 0;
     class PlasticWrap extends React.Component {
       constructor(props, context) {
@@ -35,12 +33,7 @@ describe('ReactComponentWithPureRenderMixin', function() {
       }
 
       render() {
-        return (
-          <Apple
-            color={this.state.color}
-            ref="apple"
-          />
-        );
+        return <Apple color={this.state.color} ref="apple" />;
       }
     }
 
@@ -97,7 +90,7 @@ describe('ReactComponentWithPureRenderMixin', function() {
     expect(renderCalls).toBe(4);
   });
 
-  it('does not do a deep comparison', function() {
+  it('does not do a deep comparison', () => {
     function getInitialState() {
       return {
         foo: [1, 2, 3],
@@ -141,5 +134,4 @@ describe('ReactComponentWithPureRenderMixin', function() {
     instance.setState(getInitialState());
     expect(renderCalls).toBe(3);
   });
-
 });

@@ -11,10 +11,10 @@
 
 'use strict';
 
-var React = require('React');
-var ReactDOM = require('ReactDOM');
+var React = require('react');
+var ReactAddonsDOMDependencies = require('ReactAddonsDOMDependencies');
 
-var CSSCore = require('CSSCore');
+var CSSCore = require('fbjs/lib/CSSCore');
 var ReactTransitionEvents = require('ReactTransitionEvents');
 
 var onlyChild = require('onlyChild');
@@ -54,7 +54,7 @@ var ReactCSSTransitionGroupChild = React.createClass({
   },
 
   transition: function(animationType, finishCallback, userSpecifiedDelay) {
-    var node = ReactDOM.findDOMNode(this);
+    var node = ReactAddonsDOMDependencies.getReactDOM().findDOMNode(this);
 
     if (!node) {
       if (finishCallback) {
@@ -63,8 +63,10 @@ var ReactCSSTransitionGroupChild = React.createClass({
       return;
     }
 
-    var className = this.props.name[animationType] || this.props.name + '-' + animationType;
-    var activeClassName = this.props.name[animationType + 'Active'] || className + '-active';
+    var className = this.props.name[animationType] ||
+      this.props.name + '-' + animationType;
+    var activeClassName = this.props.name[animationType + 'Active'] ||
+      className + '-active';
     var timeout = null;
 
     var endListener = function(e) {
@@ -89,7 +91,7 @@ var ReactCSSTransitionGroupChild = React.createClass({
     CSSCore.addClass(node, className);
 
     // Need to do this to actually trigger a transition.
-    this.queueClass(activeClassName);
+    this.queueClassAndNode(activeClassName, node);
 
     // If the user specified a timeout delay.
     if (userSpecifiedDelay) {
@@ -102,26 +104,29 @@ var ReactCSSTransitionGroupChild = React.createClass({
     }
   },
 
-  queueClass: function(className) {
-    this.classNameQueue.push(className);
+  queueClassAndNode: function(className, node) {
+    this.classNameAndNodeQueue.push({
+      className: className,
+      node: node,
+    });
 
     if (!this.timeout) {
-      this.timeout = setTimeout(this.flushClassNameQueue, TICK);
+      this.timeout = setTimeout(this.flushClassNameAndNodeQueue, TICK);
     }
   },
 
-  flushClassNameQueue: function() {
+  flushClassNameAndNodeQueue: function() {
     if (this.isMounted()) {
-      this.classNameQueue.forEach(
-        CSSCore.addClass.bind(CSSCore, ReactDOM.findDOMNode(this))
-      );
+      this.classNameAndNodeQueue.forEach(function(obj) {
+        CSSCore.addClass(obj.node, obj.className);
+      });
     }
-    this.classNameQueue.length = 0;
+    this.classNameAndNodeQueue.length = 0;
     this.timeout = null;
   },
 
   componentWillMount: function() {
-    this.classNameQueue = [];
+    this.classNameAndNodeQueue = [];
     this.transitionTimeouts = [];
   },
 
@@ -132,6 +137,8 @@ var ReactCSSTransitionGroupChild = React.createClass({
     this.transitionTimeouts.forEach(function(timeout) {
       clearTimeout(timeout);
     });
+
+    this.classNameAndNodeQueue.length = 0;
   },
 
   componentWillAppear: function(done) {

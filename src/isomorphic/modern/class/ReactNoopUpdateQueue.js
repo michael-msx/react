@@ -11,18 +11,20 @@
 
 'use strict';
 
-var warning = require('warning');
+var warning = require('fbjs/lib/warning');
 
-function warnTDZ(publicInstance, callerName) {
+function warnNoop(publicInstance, callerName) {
   if (__DEV__) {
+    var constructor = publicInstance.constructor;
     warning(
       false,
       '%s(...): Can only update a mounted or mounting component. ' +
-      'This usually means you called %s() on an unmounted component. ' +
-      'This is a no-op. Please check the code for the %s component.',
+        'This usually means you called %s() on an unmounted component. ' +
+        'This is a no-op.\n\nPlease check the code for the %s component.',
       callerName,
       callerName,
-      publicInstance.constructor && publicInstance.constructor.displayName || ''
+      (constructor && (constructor.displayName || constructor.name)) ||
+        'ReactClass',
     );
   }
 }
@@ -31,7 +33,6 @@ function warnTDZ(publicInstance, callerName) {
  * This is the abstract API for an update queue.
  */
 var ReactNoopUpdateQueue = {
-
   /**
    * Checks whether or not this composite component is mounted.
    * @param {ReactClass} publicInstance The instance we want to test.
@@ -44,16 +45,6 @@ var ReactNoopUpdateQueue = {
   },
 
   /**
-   * Enqueue a callback that will be executed after all the pending updates
-   * have processed.
-   *
-   * @param {ReactClass} publicInstance The instance to use as `this` context.
-   * @param {?function} callback Called after state is updated.
-   * @internal
-   */
-  enqueueCallback: function(publicInstance, callback) { },
-
-  /**
    * Forces an update. This should only be invoked when it is known with
    * certainty that we are **not** in a DOM transaction.
    *
@@ -64,10 +55,12 @@ var ReactNoopUpdateQueue = {
    * `componentWillUpdate` and `componentDidUpdate`.
    *
    * @param {ReactClass} publicInstance The instance that should rerender.
+   * @param {?function} callback Called after component is updated.
+   * @param {?string} Name of the calling function in the public API.
    * @internal
    */
-  enqueueForceUpdate: function(publicInstance) {
-    warnTDZ(publicInstance, 'forceUpdate');
+  enqueueForceUpdate: function(publicInstance, callback, callerName) {
+    warnNoop(publicInstance, 'forceUpdate');
   },
 
   /**
@@ -79,10 +72,17 @@ var ReactNoopUpdateQueue = {
    *
    * @param {ReactClass} publicInstance The instance that should rerender.
    * @param {object} completeState Next state.
+   * @param {?function} callback Called after component is updated.
+   * @param {?string} Name of the calling function in the public API.
    * @internal
    */
-  enqueueReplaceState: function(publicInstance, completeState) {
-    warnTDZ(publicInstance, 'replaceState');
+  enqueueReplaceState: function(
+    publicInstance,
+    completeState,
+    callback,
+    callerName,
+  ) {
+    warnNoop(publicInstance, 'replaceState');
   },
 
   /**
@@ -93,10 +93,17 @@ var ReactNoopUpdateQueue = {
    *
    * @param {ReactClass} publicInstance The instance that should rerender.
    * @param {object} partialState Next partial state to be merged with state.
+   * @param {?function} callback Called after component is updated.
+   * @param {?string} Name of the calling function in the public API.
    * @internal
    */
-  enqueueSetState: function(publicInstance, partialState) {
-    warnTDZ(publicInstance, 'setState');
+  enqueueSetState: function(
+    publicInstance,
+    partialState,
+    callback,
+    callerName,
+  ) {
+    warnNoop(publicInstance, 'setState');
   },
 };
 
